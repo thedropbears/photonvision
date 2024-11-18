@@ -39,6 +39,7 @@ class VisionLEDMode(Enum):
 
 _lastVersionTimeCheck = 0.0
 _VERSION_CHECK_ENABLED = True
+_WARN_DEBOUNCE_SEC = 5
 
 
 def setVersionCheckEnabled(enabled: bool):
@@ -103,6 +104,7 @@ class PhotonCamera:
 
         self._prevHeartbeat = 0
         self._prevHeartbeatChangeTime = Timer.getFPGATimestamp()
+        self._prevTimeSyncWarnTime = Timer.getFPGATimestamp()
 
     def getAllUnreadResults(self) -> List[PhotonPipelineResult]:
         """
@@ -131,6 +133,7 @@ class PhotonCamera:
                 newResult = PhotonPipelineResult.photonStruct.unpack(pkt)
                 # NT4 allows us to correct the timestamp based on when the message was sent
                 newResult.ntReceiveTimestampMicros = timestamp
+                self.checkTimeSyncOrWarn(result)
                 ret.append(newResult)
 
         return ret
@@ -158,7 +161,22 @@ class PhotonCamera:
             retVal = PhotonPipelineResult.photonStruct.unpack(pkt)
             # We don't trust NT4 time, hack around
             retVal.ntReceiveTimestampMicros = now
+            self.checkTimeSyncOrWarn(retVal)
             return retVal
+
+    def checkTimeSyncOrWarn(self, result: PhotonPipelineResult) -> None:
+        if result.metadata.timeSinceLastPong > 5e6:  # microseconds
+            now = RobotController.getFPGATime() * 1e-6
+            if now > self._prevTimeSyncWarnTime + _WARN_DEBOUNCE_SEC:
+                self._prevTimeSyncWarnTime = now
+
+                wpilib.reportWarning(
+                    f"PhotonVision coprocessor at path {self._path} is not connected to the TimeSyncServer? It's been {result.metadata.timeSinceLastPong / 1e6}s since the coprocessor last heard a pong.",
+                    True,
+                )
+        else:
+            # Got a valid packet, reset the last time
+            self._prevTimeSyncWarnTime = 0
 
     def getDriverMode(self) -> bool:
         """Returns whether the camera is in driver mode.
