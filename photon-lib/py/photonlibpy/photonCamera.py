@@ -29,6 +29,8 @@ from .packet import Packet
 from .targeting.photonPipelineResult import PhotonPipelineResult
 from .version import PHOTONLIB_VERSION  # type: ignore[import-untyped]
 
+from photonvision.targeting import TimeSyncServer
+
 
 class VisionLEDMode(Enum):
     kDefault = -1
@@ -48,15 +50,20 @@ def setVersionCheckEnabled(enabled: bool):
 
 
 class PhotonCamera:
-    def __init__(self, cameraName: str):
+    timeSyncSingleton = TimeSyncServer(5810)
+
+    def __init__(
+        self,
+        cameraName: str,
+        ntInstance: ntcore.NetworkTableInstance = ntcore.NetworkTableInstance.getDefault(),
+    ):
         """Constructs a PhotonCamera from the name of the camera.
 
         :param cameraName: The nickname of the camera (found in the PhotonVision UI).
         """
-        instance = ntcore.NetworkTableInstance.getDefault()
         self._name = cameraName
         self._tableName = "photonvision"
-        photonvision_root_table = instance.getTable(self._tableName)
+        photonvision_root_table = ntInstance.getTable(self._tableName)
         self._cameraTable = photonvision_root_table.getSubTable(cameraName)
         self._path = self._cameraTable.getPath()
         self._rawBytesEntry = self._cameraTable.getRawTopic("rawBytes").subscribe(
@@ -99,12 +106,13 @@ class PhotonCamera:
 
         # Existing is enough to make this multisubscriber do its thing
         self.topicNameSubscriber = ntcore.MultiSubscriber(
-            instance, ["/photonvision/"], ntcore.PubSubOptions(topicsOnly=True)
+            ntInstance, ["/photonvision/"], ntcore.PubSubOptions(topicsOnly=True)
         )
 
         self._prevHeartbeat = 0
         self._prevHeartbeatChangeTime = Timer.getFPGATimestamp()
         self._prevTimeSyncWarnTime = Timer.getFPGATimestamp()
+        self.timeSyncSingleton.start()
 
     def getAllUnreadResults(self) -> List[PhotonPipelineResult]:
         """
@@ -152,7 +160,6 @@ class PhotonCamera:
         now = RobotController.getFPGATime()
         packetWithTimestamp = self._rawBytesEntry.getAtomic()
         byteList = packetWithTimestamp.value
-        packetWithTimestamp.time
 
         if len(byteList) < 1:
             return PhotonPipelineResult()
