@@ -38,9 +38,30 @@ def waitForSequenceNumber(camera: PhotonCamera, seq: int) -> PhotonPipelineResul
     raise Exception(f"Never saw sequence number {seq}")
 
 
-@pytest.fixture(autouse=True)
-def setupCommon() -> None:
-    pass
+def test_nt() -> None:
+    robotNt = NetworkTableInstance.create()
+    coprocNt = NetworkTableInstance.create()
+
+    robotNt.startServer("networktables_random.json", "", 5941, 5940)
+    coprocNt.setServer("127.0.0.1", 5940)
+    coprocNt.startClient4("testClient")
+
+    time.sleep(0.5)
+    assert len(coprocNt.getConnections()) == 1
+    assert len(robotNt.getConnections()) == 1
+
+    coprocSubTable = coprocNt.getTable("foo").getSubTable("bar")
+    robotSubTable = robotNt.getTable("foo").getSubTable("bar")
+
+    robotSubscriber = robotSubTable.getIntegerTopic("baz").subscribe(0)
+
+    coprocPublisher = coprocSubTable.getIntegerTopic("baz").publish()
+    coprocPublisher.set(42)
+
+    time.sleep(0.5)
+    assert robotSubscriber.get() == 42
+    NetworkTableInstance.destroy(robotNt)
+    NetworkTableInstance.destroy(coprocNt)
 
 
 def test_Empty() -> None:
@@ -114,7 +135,7 @@ def test_RestartingRobotandCoproc(
             print("Restarting coprocessor NT client")
 
             fakePhotonCoprocCam.close()
-            coprocNt.close()
+            NetworkTableInstance.destroy(coprocNt)
             coprocNt = NetworkTableInstance.create()
 
             coprocNt.addLogger(10, 255, lambda it: print(f"CLIENT: {it.data.message}"))
@@ -127,7 +148,7 @@ def test_RestartingRobotandCoproc(
         if i == robotRestart:
             print("Restarting robot NT server")
 
-            robotNt.close()
+            NetworkTableInstance.destroy(robotNt)
             robotNt = NetworkTableInstance.create()
             robotNt.addLogger(10, 255, lambda it: print(f"ROBOT: {it.data.message}"))
             robotCamera = PhotonCamera("MY_CAMERA", robotNt)
@@ -180,6 +201,6 @@ def test_RestartingRobotandCoproc(
         robotCamera._versionCheck()
 
     coprocSim.close()
-    coprocNt.close()
-    robotNt.close()
+    NetworkTableInstance.destroy(robotNt)
+    NetworkTableInstance.destroy(coprocNt)
     tspClient.stop()
