@@ -35,6 +35,7 @@ def waitForSequenceNumber(camera: PhotonCamera, seq: int) -> PhotonPipelineResul
             return res
 
         time.sleep(0.01)
+    print(res)
     raise Exception(f"Never saw sequence number {seq}")
 
 
@@ -145,6 +146,7 @@ def test_RestartingRobotandCoproc(
             coprocSim.prop.setCalibrationFromFOV(640, 480, Rotation2d.fromDegrees(90))
             coprocSim.prop.setFPS(30)
             coprocSim.setMinTargetAreaPixels(20.0)
+            time.sleep(0.100)
         if i == robotRestart:
             print("Restarting robot NT server")
 
@@ -152,20 +154,21 @@ def test_RestartingRobotandCoproc(
             robotNt = NetworkTableInstance.create()
             robotNt.addLogger(10, 255, lambda it: print(f"ROBOT: {it.data.message}"))
             robotCamera = PhotonCamera("MY_CAMERA", robotNt)
+            time.sleep(0.100)
 
         if i == coprocStart or i == coprocRestart:
             coprocNt.setServer("127.0.0.1", 5940)
             coprocNt.startClient4("testClient")
+            time.sleep(0.100)
 
             # PhotonCamera makes a server by default - connect to it
             tspClient = TimeSyncClient("127.0.0.1", 5810, 0.5)
 
         if i == robotStart or i == robotRestart:
             robotNt.startServer("networktables_random.json", "", 5941, 5940)
+            time.sleep(0.100)
 
-        time.sleep(0.100)
-
-        if i == max(coprocStart, robotStart):
+        if i == max(coprocStart, robotStart) or i == robotRestart or i == coprocRestart:
 
             def getConnections(processor):
                 def func():
@@ -190,8 +193,6 @@ def test_RestartingRobotandCoproc(
 
         if i > robotStart and i > coprocStart:
             ret = waitForSequenceNumber(robotCamera, seq)
-            coprocSim.submitProcessedFrame(result1)
-            print(ret)
 
         # force verifyVersion to do checks
         robotCamera._lastVersionCheckTime = -100
@@ -200,7 +201,6 @@ def test_RestartingRobotandCoproc(
         # if this throws an exception (it should not)
         robotCamera._versionCheck()
 
-    coprocSim.close()
     NetworkTableInstance.destroy(robotNt)
     NetworkTableInstance.destroy(coprocNt)
     tspClient.stop()
