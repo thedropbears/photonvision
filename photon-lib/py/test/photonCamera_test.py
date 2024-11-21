@@ -30,24 +30,55 @@ def waitForSequenceNumber(camera: PhotonCamera, seq: int) -> PhotonPipelineResul
     print(f"Waiting for seq={seq} on {camera._heartbeatEntry.getTopic().getName()}")
     # wait up to 1 second for a new result
     for i in range(100):
-        res = camera.getLatestResult()
-        if res.metadata.sequenceID == seq:
-            return res
+        results = camera.getAllUnreadResults()
+        for res in results:
+            print(res)
+            if res.metadata.sequenceID == seq:
+                return res
 
         time.sleep(0.01)
-    print(res)
     raise Exception(f"Never saw sequence number {seq}")
 
 
-def test_nt() -> None:
+@pytest.fixture
+def nt():
     robotNt = NetworkTableInstance.create()
     coprocNt = NetworkTableInstance.create()
+    yield (robotNt, coprocNt)
+    robotNt.flush()
+    coprocNt.flush()
+    robotNt.stopServer()
+    coprocNt.stopClient()
+    NetworkTableInstance.destroy(robotNt)
+    NetworkTableInstance.destroy(coprocNt)
 
-    robotNt.startServer("networktables_random.json", "", 5941, 5940)
-    coprocNt.setServer("127.0.0.1", 5940)
+
+@pytest.fixture
+def robotNtRestart():
+    nt = NetworkTableInstance.create()
+    yield nt
+    nt.flush()
+    nt.stopServer()
+    NetworkTableInstance.destroy(nt)
+
+
+@pytest.fixture
+def coprocNtRestart():
+    nt = NetworkTableInstance.create()
+    yield nt
+    nt.flush()
+    nt.stopClient()
+    NetworkTableInstance.destroy(nt)
+
+
+def test_nt(nt) -> None:
+    robotNt, coprocNt = nt
+
+    robotNt.startServer("networktables_random.json", "", 15941, 15940)
+    coprocNt.setServer("127.0.0.1", 15940)
     coprocNt.startClient4("testClient")
 
-    time.sleep(0.5)
+    time.sleep(1.0)
     assert len(coprocNt.getConnections()) == 1
     assert len(robotNt.getConnections()) == 1
 
@@ -61,8 +92,6 @@ def test_nt() -> None:
 
     time.sleep(0.5)
     assert robotSubscriber.get() == 42
-    NetworkTableInstance.destroy(robotNt)
-    NetworkTableInstance.destroy(coprocNt)
 
 
 def test_Empty() -> None:
@@ -76,9 +105,6 @@ def test_Empty() -> None:
 
 @pytest.mark.skip
 def test_TimeSyncServerWithPhotonCamera() -> None:
-    NetworkTableInstance.getDefault().stopClient()
-    NetworkTableInstance.getDefault().startServer()
-
     camera = PhotonCamera("Arducam_OV2311_USB_Camera")
     photonlibpy.photonCamera.setVersionCheckEnabled(False)
 
@@ -96,6 +122,13 @@ def test_TimeSyncServerWithPhotonCamera() -> None:
         )
 
 
+@pytest.fixture
+def tspClient() -> TimeSyncClient:
+    tsp = TimeSyncClient("127.0.0.1", 5810, 0.5)
+    yield tsp
+    tsp.stop()
+
+
 # @pytest.mark.skip
 @pytest.mark.parametrize(
     "robotStart, coprocStart, robotRestart, coprocRestart",
@@ -103,22 +136,26 @@ def test_TimeSyncServerWithPhotonCamera() -> None:
         [1, 10, 30, 30],
         [10, 2, 30, 30],
         [10, 10, 30, 30],
-        # Reboot just the robot
-        [1, 1, 10, 30],
         # Reboot just the coproc
         [1, 1, 30, 10],
+        # Reboot just the robot
+        [1, 1, 10, 30],
     ],
 )
 def test_RestartingRobotandCoproc(
-    robotStart: int, coprocStart: int, robotRestart: int, coprocRestart: int
+    robotStart: int,
+    coprocStart: int,
+    robotRestart: int,
+    coprocRestart: int,
+    tspClient,
+    nt,
+    robotNtRestart,
+    coprocNtRestart,
 ):
-    robotNt = NetworkTableInstance.create()
-    coprocNt = NetworkTableInstance.create()
+    robotNt, coprocNt = nt
 
     robotNt.addLogger(10, 255, lambda it: print(f"ROBOT: {it.data.message}"))
     coprocNt.addLogger(10, 255, lambda it: print(f"CLIENT: {it.data.message}"))
-
-    tspClient: TimeSyncClient | None = None
 
     robotCamera = PhotonCamera("MY_CAMERA", robotNt)
 
@@ -135,11 +172,12 @@ def test_RestartingRobotandCoproc(
         if i == coprocRestart:
             print("Restarting coprocessor NT client")
 
-            fakePhotonCoprocCam.close()
+            coprocNt.stopClient()
             NetworkTableInstance.destroy(coprocNt)
-            coprocNt = NetworkTableInstance.create()
-
-            coprocNt.addLogger(10, 255, lambda it: print(f"CLIENT: {it.data.message}"))
+            coprocNt = coprocNtRestart
+            coprocNt.addLogger(
+                10, 255, lambda it: print(f"CLIENT RESTARTED: {it.data.message}")
+            )
 
             fakePhotonCoprocCam = PhotonCamera("MY_CAMERA", coprocNt)
             coprocSim = PhotonCameraSim(fakePhotonCoprocCam)
@@ -147,25 +185,30 @@ def test_RestartingRobotandCoproc(
             coprocSim.prop.setFPS(30)
             coprocSim.setMinTargetAreaPixels(20.0)
             time.sleep(0.100)
+
         if i == robotRestart:
             print("Restarting robot NT server")
 
+            robotNt.stopServer()
             NetworkTableInstance.destroy(robotNt)
-            robotNt = NetworkTableInstance.create()
-            robotNt.addLogger(10, 255, lambda it: print(f"ROBOT: {it.data.message}"))
+            time.sleep(0.100)
+            robotNt = robotNtRestart
+            robotNt.addLogger(
+                10, 255, lambda it: print(f"ROBOT RESTARTED: {it.data.message}")
+            )
             robotCamera = PhotonCamera("MY_CAMERA", robotNt)
             time.sleep(0.100)
 
         if i == coprocStart or i == coprocRestart:
-            coprocNt.setServer("127.0.0.1", 5940)
+            coprocNt.setServer("127.0.0.1", 15940)
             coprocNt.startClient4("testClient")
             time.sleep(0.100)
 
             # PhotonCamera makes a server by default - connect to it
-            tspClient = TimeSyncClient("127.0.0.1", 5810, 0.5)
+            tspClient.start()
 
         if i == robotStart or i == robotRestart:
-            robotNt.startServer("networktables_random.json", "", 5941, 5940)
+            robotNt.startServer("networktables_random.json", "", 15941, 15940)
             time.sleep(0.100)
 
         if i == max(coprocStart, robotStart) or i == robotRestart or i == coprocRestart:
@@ -178,6 +221,7 @@ def test_RestartingRobotandCoproc(
 
             waitForCondition("Coproc connection", getConnections(coprocNt))
             waitForCondition("Rio connection", getConnections(robotNt))
+            time.sleep(0.1)
 
         result1 = PhotonPipelineResult()
         result1.metadata.captureTimestampMicros = seq * 100
@@ -201,6 +245,4 @@ def test_RestartingRobotandCoproc(
         # if this throws an exception (it should not)
         robotCamera._versionCheck()
 
-    NetworkTableInstance.destroy(robotNt)
-    NetworkTableInstance.destroy(coprocNt)
-    tspClient.stop()
+    time.sleep(1.0)
