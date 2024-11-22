@@ -1,16 +1,23 @@
 [tool.mypy]
-exclude = ["build","setup.py"]
+exclude = ["build", "setup.py"]
 
 [project]
 name = "photonlibpy"
 version = "0.1.0"
-description = "Add your description here"
+description = "Pure-python implementation of PhotonLib for interfacing with PhotonVision on coprocessors."
 readme = "README.md"
-authors = [
-    { name = "Lucien Morey" }
-]
+authors = [{ name = "Photonvision Development Team" }]
+urls = { homepage = "https://photonvision.org" }
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "numpy~=2.1",
+    "wpilib<2026,>=2025.0.0b1",
+    "robotpy-wpimath<2026,>=2025.0.0b1",
+    "robotpy-apriltag<2026,>=2025.0.0b1",
+    "robotpy-cscore<2026,>=2025.0.0b1",
+    "pyntcore<2026,>=2025.0.0b1",
+    "opencv-python;platform_machine!='roborio'",
+]
 
 [build-system]
 requires = ["hatchling"]
