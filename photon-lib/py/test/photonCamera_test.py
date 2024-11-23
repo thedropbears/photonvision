@@ -25,8 +25,6 @@ def waitForCondition(name: str, condition) -> None:
 
 
 def waitForSequenceNumber(camera: PhotonCamera, seq: int) -> PhotonPipelineResult:
-    # assert camera._heartbeatEntry.getTopic().getHandle() != 0
-
     print(f"Waiting for seq={seq} on {camera._heartbeatEntry.getTopic().getName()}")
     # wait up to 1 second for a new result
     for i in range(100):
@@ -74,8 +72,8 @@ def coprocNtRestart():
 def test_nt(nt) -> None:
     robotNt, coprocNt = nt
 
-    robotNt.startServer("networktables_random.json", "", 15941, 15940)
-    coprocNt.setServer("127.0.0.1", 15940)
+    robotNt.startServer("networktables_random.json", "", 5941, 5940)
+    coprocNt.setServer("127.0.0.1", 5940)
     coprocNt.startClient4("testClient")
 
     time.sleep(1.0)
@@ -200,7 +198,7 @@ def test_RestartingRobotandCoproc(
             time.sleep(0.100)
 
         if i == coprocStart or i == coprocRestart:
-            coprocNt.setServer("127.0.0.1", 15940)
+            coprocNt.setServer("127.0.0.1", 5940)
             coprocNt.startClient4("testClient")
             time.sleep(0.100)
 
@@ -208,7 +206,7 @@ def test_RestartingRobotandCoproc(
             tspClient.start()
 
         if i == robotStart or i == robotRestart:
-            robotNt.startServer("networktables_random.json", "", 15941, 15940)
+            robotNt.startServer("networktables_random.json", "", 5941, 5940)
             time.sleep(0.100)
 
         if i == max(coprocStart, robotStart) or i == robotRestart or i == coprocRestart:
@@ -221,7 +219,6 @@ def test_RestartingRobotandCoproc(
 
             waitForCondition("Coproc connection", getConnections(coprocNt))
             waitForCondition("Rio connection", getConnections(robotNt))
-            time.sleep(0.1)
 
         result1 = PhotonPipelineResult()
         result1.metadata.captureTimestampMicros = seq * 100
