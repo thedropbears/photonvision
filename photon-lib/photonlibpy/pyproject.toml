@@ -13,6 +13,21 @@ requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 
+# [tool.hatch.version]
+# source = "vcs"
+
+[tool.hatch.build.hooks.custom]
+path = "generate_version.py"
+class = "VersionHook"
+# pre-build = "uv run python generate_version.py"
+
+[tool.hatch.metadata]
+dynamic=["version"]
+
+[tool.hatch.version]
+path = "photonlibpy/version.py"
+pattern = '^PHOTONLIB_VERSION = "(.*?)"$'
+
 [project]
 name = "photonlibpy"
 version = "0.1.0"
@@ -30,7 +45,3 @@ dependencies = [
     "pyntcore<2026,>=2025.0.0b1",
     "opencv-python;platform_machine!='roborio'",
 ]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"

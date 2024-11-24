@@ -9,7 +9,9 @@ LIB_LOCATION = os.path.dirname(os.path.abspath(__file__))
 
 def get_git_version() -> str:
     return (
-        subprocess.check_output(["git", "describe", "--tags", "--match=v*", "--always"])
+        subprocess.check_output(
+            ["git", "-C", LIB_LOCATION, "describe", "--tags", "--match=v*", "--always"]
+        )
         .decode("utf-8")
         .strip()
     )
@@ -62,5 +64,13 @@ def generate_version_file() -> None:
         fp.write(f'PHOTONLIB_VERSION="{get_photon_lib_version_string()}"\n')
         fp.write(f'PHOTONVISION_VERSION="{get_git_version()}"\n')
 
-if __name__ == "__main__":
-    generate_version_file()
+
+from typing import Any
+from hatchling.builders.hooks.plugin.interface import BuildHookInterface
+
+
+class VersionHook(BuildHookInterface):
+    def initialize(self, version: str, build_data: dict[str, Any]) -> None:
+        generate_version_file()
+
+        return super().initialize(version, build_data)
