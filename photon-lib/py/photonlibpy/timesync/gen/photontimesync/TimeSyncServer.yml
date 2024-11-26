@@ -1,0 +1,10 @@
+---
+extra_includes:
+  - pybind11/chrono.h
+
+classes:
+  TimeSyncServer:
+    methods:
+      TimeSyncServer:
+      Start:
+      Stop:

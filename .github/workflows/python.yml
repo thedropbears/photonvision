@@ -1,23 +1,23 @@
 name: Build and Distribute PhotonLibPy
 
 permissions:
-  id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+  id-token: write # IMPORTANT: this permission is mandatory for trusted publishing
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
     tags:
-      - 'v*'
+      - "v*"
     paths:
-      - '**'
-      - '!docs/**'
-      - '.github/**'
+      - "**"
+      - "!docs/**"
+      - ".github/**"
   pull_request:
-    branches: [ master ]
+    branches: [master]
     paths:
-      - '**'
-      - '!docs/**'
-      - '.github/**'
+      - "**"
+      - "!docs/**"
+      - ".github/**"
   merge_group:
 
 jobs:
@@ -38,7 +38,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install setuptools wheel pytest mypy
+          pip install setuptools wheel pytest mypy robotpy_build
 
       - name: Build wheel
         working-directory: ./photon-lib/py
@@ -48,8 +48,8 @@ jobs:
       - name: Run Unit Tests
         working-directory: ./photon-lib/py
         run: |
-            pip install --no-cache-dir dist/*.whl
-            pytest
+          pip install --no-cache-dir dist/*.whl
+          pytest
 
       - name: Run mypy type checking
         uses: liskin/gh-problem-matcher-wrap@v3
@@ -57,7 +57,6 @@ jobs:
           linters: mypy
           run: |
             mypy --show-column-numbers --config-file photon-lib/py/pyproject.toml photon-lib
-
 
       - name: Upload artifacts
         uses: actions/upload-artifact@master
@@ -73,4 +72,4 @@ jobs:
           packages_dir: ./photon-lib/py/dist/
 
     permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+      id-token: write # IMPORTANT: this permission is mandatory for trusted publishing

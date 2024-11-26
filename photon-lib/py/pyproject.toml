@@ -1,2 +1,58 @@
-[tool.mypy]
-exclude = ["build","setup.py"]
+[tool.robotpy-build.metadata]
+name = "photonlibpy"
+description = "A Pure-python implementation of PhotonLib"
+author = "Photonvision Development Team"
+url = "https://photonvision.org"
+license = "GPLv3"
+author_email = "robotpy@googlegroups.com"  # required - replace with something more suitable
+install_requires = [
+]
+
+[build-system]
+requires = [
+    "robotpy-build<2026.0.0,>=2025.0.0a1",
+    "pyntcore<2026.0.0,>=2025.0.0b1",
+    "robotpy-apriltag",
+    "robotpy-wpimath<2026.0.0,>=2025.0.0b1",
+    "wpilib<2026.0.0,>=2025.0.0b1",
+]
+
+[tool.robotpy-build]
+base_package = "photonlibpy"
+update_init = ["photonlibpy.timesync photonlibpy.timesync._photonlibpy_timesync"]
+
+# ======================== Begin photon-timesync stuff ========================
+
+[tool.robotpy-build.wrappers."photonlibpy.timesync"]
+name = "photonlibpy_timesync"
+
+depends = [
+    "ntcore",
+    "wpimath",
+    "wpinet",
+    "wpiutil",
+]
+
+sources = [
+  "photonlibpy/timesync/src/module.cpp",
+]
+
+generation_data = "photonlibpy/timesync/gen/photontimesync"
+
+[tool.robotpy-build.wrappers."photonlibpy.timesync".maven_lib_download]
+artifact_id = "photontargeting-cpp"
+group_id = "org.photonvision"
+repo_url = "file:///~/.m2/repository"
+version = "dev-v2025.0.0-beta-4-13-gc6362cf8"
+libs = ["photontargeting"]
+[[tool.robotpy-build.wrappers."photonlibpy.timesync".maven_lib_download.header_patches]]
+# TODO This patch takes out the default argument to the constructor. Put it back!!
+patch = "photonlibpy/timesync/patches/no-wpi-print-incl.patch"
+strip = 6
+
+
+[tool.robotpy-build.wrappers."photonlibpy.timesync".autogen_headers]
+# photontargeting
+TimeSyncStructs     = "net/TimeSyncStructs.h"
+TimeSyncClient      = "net/TimeSyncClient.h"
+TimeSyncServer      = "net/TimeSyncServer.h"

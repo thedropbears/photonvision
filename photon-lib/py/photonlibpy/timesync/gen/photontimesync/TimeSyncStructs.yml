@@ -1,0 +1,16 @@
+---
+classes:
+  TspPing:
+    methods:
+      TspPing:
+    attributes:
+      version:
+      message_id:
+      client_time:
+    force_no_trampoline: true
+  TspPong:
+    methods:
+      TspPong:
+    attributes:
+      server_time:
+    force_no_trampoline: true

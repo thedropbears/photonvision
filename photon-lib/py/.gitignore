@@ -3,3 +3,10 @@ dist/
 build/
 .eggs/
 photonlibpy/version.py
+photonlibpy/timesync/include
+photonlibpy/timesync/rpy-include
+photonlibpy/timesync/__pycache__
+photonlibpy/timesync/pkgcfg.py
+photonlibpy/timesync/_init*.py
+photonlibpy/timesync/*.pyi
+photonlibpy/timesync/*.so
