@@ -1,0 +1,36 @@
+diff --git a/photon-targeting/src/main/native/include/net/TimeSyncClient.h b/photon-targeting/src/main/native/include/net/TimeSyncClient.h
+index 82e5b0eb..9fed4186 100644
+--- a/photon-targeting/src/main/native/include/net/TimeSyncClient.h
++++ b/photon-targeting/src/main/native/include/net/TimeSyncClient.h
+@@ -37,7 +37,6 @@
+ 
+ #include <frc/filter/MedianFilter.h>
+ #include <wpi/Logger.h>
+-#include <wpi/print.h>
+ #include <wpi/static_circular_buffer.h>
+ #include <wpi/struct/Struct.h>
+ 
+diff --git a/photon-targeting/src/main/native/include/net/TimeSyncServer.h b/photon-targeting/src/main/native/include/net/TimeSyncServer.h
+index 3a85d390..e271f93f 100644
+--- a/photon-targeting/src/main/native/include/net/TimeSyncServer.h
++++ b/photon-targeting/src/main/native/include/net/TimeSyncServer.h
+@@ -36,7 +36,6 @@
+ #include <thread>
+ 
+ #include <wpi/Logger.h>
+-#include <wpi/print.h>
+ #include <wpi/struct/Struct.h>
+
+ #include "TimeSyncStructs.h"
+diff --git a/photon-targeting/src/main/native/include/net/TimeSyncStructs.h b/photon-targeting/src/main/native/include/net/TimeSyncStructs.h
+index 88702597..a4cd7184 100644
+--- a/photon-targeting/src/main/native/include/net/TimeSyncStructs.h
++++ b/photon-targeting/src/main/native/include/net/TimeSyncStructs.h
+@@ -87,5 +87,5 @@ struct wpi::Struct<wpi::tsp::TspPong> {
+   }
+ };
+ 
+-static_assert(wpi::StructSerializable<wpi::tsp::TspPong>);
+-static_assert(wpi::StructSerializable<wpi::tsp::TspPing>);
++// static_assert(wpi::StructSerializable<wpi::tsp::TspPong>);
++// static_assert(wpi::StructSerializable<wpi::tsp::TspPing>);
